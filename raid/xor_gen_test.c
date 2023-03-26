@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	// Allocate the arrays
 	for (i = 0; i < TEST_SOURCES + 1; i++) {
 		void *buf;
-		ret = posix_memalign(&buf, 32, TEST_LEN);
+		ret = posix_memalign(&buf, 64, TEST_LEN);
 		if (ret) {
 			printf("alloc error: Fail");
 			return 1;
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Test at the end of buffer
-	for (i = 0; i < TEST_LEN; i += 32) {
+	for (i = 0; i < TEST_LEN; i += 64) {
 		for (j = 0; j < TEST_SOURCES + 1; j++) {
 			rand_buffer((unsigned char *)buffs[j] + i, TEST_LEN - i);
 			tmp_buf[j] = (char *)buffs[j] + i;
