@@ -1,5 +1,5 @@
 ########################################################################
-#  Copyright(c) 2011-2017 Intel Corporation All rights reserved.
+#  Copyright(c) 2011-2024 Intel Corporation All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions
@@ -25,6 +25,8 @@
 #  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#  SPDX-License-Identifier: BSD-3-Clause
 ########################################################################
 
 # This file can be auto-regenerated with $make -f Makefile.unx Makefile.nmake
@@ -85,18 +87,38 @@ objs = \
 	bin\gf_5vect_mad_avx2.obj \
 	bin\gf_6vect_mad_avx2.obj \
 	bin\ec_multibinary.obj \
+	bin\gf_vect_mad_avx2_gfni.obj \
+	bin\gf_2vect_mad_avx2_gfni.obj \
+	bin\gf_3vect_mad_avx2_gfni.obj \
+	bin\gf_4vect_mad_avx2_gfni.obj \
+	bin\gf_5vect_mad_avx2_gfni.obj \
 	bin\gf_vect_dot_prod_avx512.obj \
 	bin\gf_2vect_dot_prod_avx512.obj \
 	bin\gf_3vect_dot_prod_avx512.obj \
 	bin\gf_4vect_dot_prod_avx512.obj \
 	bin\gf_5vect_dot_prod_avx512.obj \
 	bin\gf_6vect_dot_prod_avx512.obj \
+	bin\gf_vect_dot_prod_avx512_gfni.obj \
+	bin\gf_vect_dot_prod_avx2_gfni.obj \
+	bin\gf_2vect_dot_prod_avx2_gfni.obj \
+	bin\gf_3vect_dot_prod_avx2_gfni.obj \
+	bin\gf_2vect_dot_prod_avx512_gfni.obj \
+	bin\gf_3vect_dot_prod_avx512_gfni.obj \
+	bin\gf_4vect_dot_prod_avx512_gfni.obj \
+	bin\gf_5vect_dot_prod_avx512_gfni.obj \
+	bin\gf_6vect_dot_prod_avx512_gfni.obj \
 	bin\gf_vect_mad_avx512.obj \
 	bin\gf_2vect_mad_avx512.obj \
 	bin\gf_3vect_mad_avx512.obj \
 	bin\gf_4vect_mad_avx512.obj \
 	bin\gf_5vect_mad_avx512.obj \
 	bin\gf_6vect_mad_avx512.obj \
+	bin\gf_vect_mad_avx512_gfni.obj \
+	bin\gf_2vect_mad_avx512_gfni.obj \
+	bin\gf_3vect_mad_avx512_gfni.obj \
+	bin\gf_4vect_mad_avx512_gfni.obj \
+	bin\gf_5vect_mad_avx512_gfni.obj \
+	bin\gf_6vect_mad_avx512_gfni.obj \
 	bin\xor_gen_sse.obj \
 	bin\pq_gen_sse.obj \
 	bin\xor_check_sse.obj \

@@ -69,18 +69,32 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 # If this build is for x86, look for yasm and nasm
 if test x"$is_x86" = x"yes"; then
   AC_MSG_CHECKING([whether Intel CET is enabled])
-  AC_TRY_COMPILE([],[
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
 #ifndef __CET__
 # error CET is not enabled
-#endif],
-		  [AC_MSG_RESULT([yes])
-		   intel_cet_enabled=yes],
-		  [AC_MSG_RESULT([no])
+#endif]])],[AC_MSG_RESULT([yes])
+		   intel_cet_enabled=yes],[AC_MSG_RESULT([no])
 		   intel_cet_enabled=no])
 AS_IF([test "x$intel_cet_enabled" = "xyes"], [
         AC_DEFINE(INTEL_CET_ENABLED, [1], [Intel CET enabled.])
 ])
 
+# check if LD -z options are supported
+LDFLAGS="\
+-Wl,-z,noexecstack \
+-Wl,-z,relro \
+-Wl,-z,now \
+"
+AC_MSG_CHECKING([if $LD supports $LDFLAGS])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
+int main(int argc, char **argv)
+{
+	return 0;
+}]])],
+	[AC_MSG_RESULT([yes])],
+	[AC_MSG_RESULT([no])
+		LDFLAGS=""]
+)
 
   # Pick an assembler yasm or nasm
   if test x"$AS" = x""; then
@@ -287,6 +301,8 @@ my_CFLAGS="\
 -Wshadow \
 -Wstrict-prototypes \
 -Wtype-limits \
+-fstack-protector \
+-D_FORTIFY_SOURCE=2 \
 "
 AC_SUBST([my_CFLAGS])
 

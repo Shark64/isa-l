@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>		// for memset, memcmp
+#include <assert.h>
 #include "erasure_code.h"
 #include "test.h"
 
@@ -60,7 +61,7 @@ typedef unsigned char u8;
 
 void ec_encode_perf(int m, int k, u8 * a, u8 * g_tbls, u8 ** buffs)
 {
-	ec_init_tables(k, m - k, &a[k * k], g_tbls);
+	ec_init_tables_base(k, m - k, &a[k * k], g_tbls);
 	ec_encode_data_base(TEST_LEN(m), k, m - k, g_tbls, buffs, &buffs[k]);
 }
 
@@ -88,7 +89,7 @@ int ec_decode_perf(int m, int k, u8 * a, u8 * g_tbls, u8 ** buffs, u8 * src_in_e
 			c[k * i + j] = d[k * src_err_list[i] + j];
 
 	// Recover data
-	ec_init_tables(k, nerrs, c, g_tbls);
+	ec_init_tables_base(k, nerrs, c, g_tbls);
 	ec_encode_data_base(TEST_LEN(m), k, nerrs, g_tbls, recov, temp_buffs);
 
 	return 0;
@@ -112,10 +113,8 @@ int main(int argc, char *argv[])
 
 	printf("erasure_code_base_perf: %dx%d %d\n", m, TEST_LEN(m), nerrs);
 
-	if (m > MMAX || k > KMAX || nerrs > (m - k)) {
-		printf(" Input test parameter error\n");
-		return -1;
-	}
+	// check input parameters
+	assert(!(m > MMAX || k > KMAX || nerrs > (m - k)));
 
 	memcpy(src_err_list, err_list, nerrs);
 	memset(src_in_err, 0, TEST_SOURCES);
