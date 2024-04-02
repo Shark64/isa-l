@@ -29,7 +29,8 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
+          - macos-13  # x86_64
+          - macos-14  # arm64
         assembler:
           - nasm
     runs-on: ${{ matrix.os }}
@@ -39,7 +40,7 @@ jobs:
         run: sudo apt install ${{ matrix.assembler }}
         if: runner.os == 'Linux'
       - name: Install build dependencies (Macos)
-        run: brew install ${{ matrix.assembler }} automake autoconf coreutils
+        run: brew install ${{ matrix.assembler }} automake autoconf coreutils libtool
         if: runner.os == 'macOS'
       - name: Build
         run: |
@@ -50,7 +51,6 @@ jobs:
         run: bash tools/test_checks.sh
       - name: Run extended tests
         run: bash tools/test_extended.sh
-        if: runner.os == 'Linux'  # Fails on Mac OS due to nmake consistency issue
 
   run_tests_windows:
     needs: check_format
