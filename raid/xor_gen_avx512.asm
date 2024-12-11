@@ -32,7 +32,7 @@
 
 ;;; Generates xor parity vector from N (vects-1) sources in array of pointers
 ;;; (**array).  Last pointer is the dest.
-;;; Vectors must be aligned to 32 bytes.  Length can be any value.
+;;; Vectors must be aligned to 64 bytes.  Length can be any value.
 
 %include "reg_sizes.asm"
 
@@ -80,137 +80,119 @@
 
 %define vec arg0
 %define len arg1
-%define ptr arg3
+%define ptr tmp3
 %define tmp2 rax
-%define tmp2.b al
-%define pos tmp3
+%define pos arg3
 %define PS 8
 
 %define NO_NT_LDST
 ;;; Use Non-temporal load/stor
 %ifdef NO_NT_LDST
- %define XLDR vmovdqu8
- %define XSTR vmovdqu8
+ %define XLDR vmovdqa64
+ %define XSTR vmovdqa64
 %else
  %define XLDR vmovntdqa
  %define XSTR vmovntdq
 %endif
 
 
+%use smartalign
+ALIGNMODE P6
+
 default rel
 [bits 64]
 
 section .text
 
-align 16
+align 32
 mk_global  xor_gen_avx512, function
 func(xor_gen_avx512)
 	FUNC_SAVE
-	sub	vec, 2			;Keep as offset to last source
-	jng	return_fail		;Must have at least 2 sources
-	cmp	len, 0
-	je	return_pass
-	test	len, (128-1)		;Check alignment of length
-	jnz	len_not_aligned
+	xor	return, return
+	xor	pos, pos
+	test	len, len
+	setz	BYTE(pos)
+	sub	DWORD(vec), 2	;Keep as offset to last source
+	setle	BYTE(return)
+	add	DWORD(pos), DWORD(return)
+	jnz	exit		;Must have at least 2 sources
+	xor	DWORD(tmp2), DWORD(tmp2)
+	mov	tmp, len
+	shr	tmp, 7
+	xor	pos, pos
+	cmp	len, 127
+	jle	len_not_aligned
 
-len_aligned_128bytes:
-	sub	len, 128
-	mov	pos, 0
-
+align 16
 loop128:
-	mov	tmp, vec		;Back to last vector
-	mov	tmp2, [arg2+vec*PS]	;Fetch last pointer in array
-	sub	tmp, 1			;Next vect
-	XLDR	zmm0, [tmp2+pos]	;Start with end of array in last vector
-	XLDR	zmm1, [tmp2+pos+64]	;Keep xor parity in xmm0-7
+	mov	tmp2, pos
+	add	tmp2, [arg2+vec*PS]	;Fetch last pointer in array
+	XLDR	zmm0, [tmp2]	;Start with end of array in last vector
+	XLDR	zmm1, [tmp2+64]	
+	lea	DWORD(tmp2), [vec-1]
 
 next_vect:
-	mov 	ptr, [arg2+tmp*PS]
-	sub	tmp, 1
-	XLDR	zmm4, [ptr+pos]		;Get next vector (source)
-	XLDR	zmm5, [ptr+pos+64]
-	vpxorq	zmm0, zmm0, zmm4	;Add to xor parity
-	vpxorq	zmm1, zmm1, zmm5
+	mov	ptr, pos
+	add 	ptr, [arg2+tmp2*PS]
+%ifdef NO_NT_LDST
+	vpxorq  zmm0, zmm0, [ptr]
+	vpxorq  zmm1, zmm1, [ptr+64]
+%else
+	XLDR	zmm2, [ptr]		;Get next vector (source)
+	XLDR	zmm3, [ptr+64]
+	vpxorq	zmm0, zmm0, zmm2	;Add to xor parity
+	vpxorq	zmm1, zmm1, zmm3
+%endif
+	sub	DWORD(tmp2), 1
 	jge	next_vect		;Loop for each source
 
-	mov	ptr, [arg2+PS+vec*PS]	;Address of parity vector
-	XSTR	[ptr+pos], zmm0		;Write parity xor vector
-	XSTR	[ptr+pos+64], zmm1
-	add	pos, 128
-	cmp	pos, len
-	jle	loop128
-
-return_pass:
-	FUNC_RESTORE
-	mov	return, 0
-	ret
-
-
-;;; Do one byte at a time for no alignment case
-loop_1byte:
-	mov	tmp, vec		;Back to last vector
-	mov 	ptr, [arg2+vec*PS] 	;Fetch last pointer in array
-	mov	tmp2.b, [ptr+len-1]	;Get array n
+	mov	ptr, pos
+	add	ptr, [arg2+vec*PS+PS]		;Address of parity vector
+	XSTR	[ptr], zmm0		;Write parity xor vector
+	XSTR	[ptr+64], zmm1
+	sub	pos, -128		;shorter encoding for add pos, 128
 	sub	tmp, 1
-nextvect_1byte:
-	mov 	ptr, [arg2+tmp*PS]
-	xor	tmp2.b, [ptr+len-1]
-	sub	tmp, 1
-	jge	nextvect_1byte
-
-	mov	tmp, vec
-	add	tmp, 1		  	;Add back to point to last vec
-	mov	ptr, [arg2+tmp*PS]
-	mov	[ptr+len-1], tmp2.b 	;Write parity
-	sub	len, 1
-	test	len, (PS-1)
-	jnz	loop_1byte
-
-	cmp	len, 0
-	je	return_pass
-	test	len, (128-1)		;If not 0 and 128bit aligned
-	jz	len_aligned_128bytes	; then do aligned case. len = y * 128
-
-	;; else we are 8-byte aligned so fall through to recheck
-
-
+	jnz	loop128
 	;; Unaligned length cases
+align 16
 len_not_aligned:
-	test	len, (PS-1)
-	jne	loop_1byte
-	mov	tmp3, len
-	and	tmp3, (128-1)		;Do the unaligned bytes 8 at a time
+	xor	DWORD(tmp2), DWORD(tmp2)
+	and	DWORD(len), 127
+	jz	exit
+	lea	ptr, [tmp2-1]		; tmp2 is 0 -> tmp=0xFFFFF...
+	bzhi	len, ptr, len		; bzhi sets CF if pos > 63
+	cmovnc	ptr, len		;If CF=0 put the bitmask in the lower
+	cmovnc	len, ptr		; mask register and zero the upper.
+	kmovq	k1, ptr		; else, mask in the upper reg and 0xFFFF..
+	kmovq	k2, len			; in the lower.
+	mov	tmp2, pos
+	add	tmp2, [arg2+vec*PS]	;Fetch last pointer in array
+	vmovdqu8	zmm0{k1}{z}, [tmp2]	;Start with end of array in last vector
+	vmovdqu8	zmm1{k2}{z}, [tmp2+64]
+	lea	DWORD(tmp2), [vec-1]
+	
 
-	;; Run backwards 8 bytes at a time for (tmp3) bytes
-loop8_bytes:
-	mov	tmp, vec		;Back to last vector
-	mov 	ptr, [arg2+vec*PS] 	;Fetch last pointer in array
-	mov	tmp2, [ptr+len-PS]	;Get array n
-	sub	tmp, 1
-nextvect_8bytes:
-	mov 	ptr, [arg2+tmp*PS] 	;Get pointer to next vector
-	xor	tmp2, [ptr+len-PS]
-	sub	tmp, 1
-	jge	nextvect_8bytes	;Loop for each source
+len_not_aligned_loop:
+	mov	ptr, pos
+	add 	ptr, [arg2+tmp2*PS]
+	vmovdqu8	zmm2{k1}{z}, [ptr]	;Get next vector (source)
+	vmovdqu8	zmm3{k2}{z}, [ptr+64]
+	vpxorq	zmm0, zmm0, zmm2	;Add to xor parity
+	vpxorq	zmm1, zmm1, zmm3
+	sub	DWORD(tmp2), 1
+	jge	len_not_aligned_loop	;Loop for each source
 
-	mov	tmp, vec
-	add	tmp, 1		  	;Add back to point to last vec
-	mov	ptr, [arg2+tmp*PS]
-	mov	[ptr+len-PS], tmp2	;Write parity
-	sub	len, PS
-	sub	tmp3, PS
-	jg	loop8_bytes
-
-	cmp	len, 128		;Now len is aligned to 128B
-	jge	len_aligned_128bytes	;We can do the rest aligned
-
-	cmp	len, 0
-	je	return_pass
-
-return_fail:
+	mov	ptr, pos
+	add	ptr, [arg2+vec*PS+PS]		;Address of parity vector
+	
+	vmovdqu8	[ptr]{k1}, zmm0		;Write parity xor vector
+	vmovdqu8	[ptr+64]{k2}, zmm1
+	xor	DWORD(return), DWORD(return)
+	
+exit:
 	FUNC_RESTORE
-	mov	return, 1
 	ret
+
 
 endproc_frame
 

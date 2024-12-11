@@ -54,6 +54,7 @@ rand_buffer(unsigned char *buf, long buffer_size)
 int
 main(int argc, char *argv[])
 {
+
         int i, j, k, ret, fail = 0;
         void *buffs[TEST_SOURCES + 1] = { NULL };
         char *tmp_buf[TEST_SOURCES + 1] = { NULL };
@@ -65,7 +66,7 @@ main(int argc, char *argv[])
         // Allocate the arrays
         for (i = 0; i < TEST_SOURCES + 1; i++) {
                 void *buf;
-                ret = posix_memalign(&buf, 32, TEST_LEN);
+                ret = posix_memalign(&buf, 64, TEST_LEN);
                 if (ret) {
                         printf("alloc error: Fail");
                         fail = 1;
@@ -89,6 +90,7 @@ main(int argc, char *argv[])
                 printf("fail zero test");
                 goto exit;
         }
+
 #ifdef TEST_VERBOSE
         putchar('.');
 #endif
@@ -163,6 +165,7 @@ main(int argc, char *argv[])
                         printf("fail end test - offset: %d, len: %d\n", i, TEST_LEN - i);
                         goto exit;
                 }
+
 #ifdef TEST_VERBOSE
                 putchar('.');
 #endif
