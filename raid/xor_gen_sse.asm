@@ -116,12 +116,11 @@ func(xor_gen_sse)
 
 len_aligned_128bytes:
 	sub	len, 128
-	mov	pos, 0
-	mov	tmp, vec		;Preset to last vector
+	xor	DWORD(pos), DWORD(pos)
 
 loop128:
 	mov	tmp2, [arg2+tmp*PS]	;Fetch last pointer in array
-	sub	tmp, 1			;Next vect
+	lea	tmp, [vec-1]		;Next vect
 	XLDR	xmm0, [tmp2+pos]	;Start with end of array in last vector
 	XLDR	xmm1, [tmp2+pos+16]	;Keep xor parity in xmm0-7
 	XLDR	xmm2, [tmp2+pos+(2*16)]
@@ -133,7 +132,6 @@ loop128:
 
 next_vect:
 	mov 	ptr, [arg2+tmp*PS]
-	sub	tmp, 1
 	xorpd	xmm0, [ptr+pos]		;Get next vector (source)
 	xorpd	xmm1, [ptr+pos+16]
 	xorpd	xmm2, [ptr+pos+(2*16)]
@@ -143,7 +141,8 @@ next_vect:
 	xorpd	xmm6, [ptr+pos+(6*16)]
 	xorpd	xmm7, [ptr+pos+(7*16)]
 ;;;  	prefetch [ptr+pos+(8*16)]
-	jge	next_vect		;Loop for each vect
+	sub	tmp, 1
+	jae	next_vect		;Loop for each vect
 
 
 	mov	tmp, vec		;Back to last vector
@@ -161,7 +160,7 @@ next_vect:
 	jle	loop128
 
 return_pass:
-	mov	return, 0
+	xor	DWORD(return), DWORD(return)
 	FUNC_RESTORE
 	ret
 
